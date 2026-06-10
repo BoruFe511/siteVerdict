@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteVerdict – Der KI-Assistent für Bausachverständige</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F5F6F8;
+    --surface: #FFFFFF;
+    --surface2: #EEF0F4;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text: #0F172A;
+    --text2: #475569;
+    --text3: #94A3B8;
+    --navy: #1B2A4A;
+    --navy2: #243558;
+    --navy3: #0F1E36;
+    --gold: #D4961A;
+    --gold2: #F0AE20;
+    --gold-bg: #FEF3DC;
+    --gold-text: #7A4F08;
+    --accent: #1B2A4A;
+    --success: #0F6E56;
+    --success-bg: #E1F5EE;
+    --success-text: #04342C;
+    --warn: #B45309;
+    --warn-bg: #FAEEDA;
+    --warn-text: #412402;
+    --danger: #991B1B;
+    --danger-bg: #FEE2E2;
+    --danger-text: #7F1D1D;
+    --critical-bg: #1B2A4A;
+    --critical-text: #F0AE20;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+  body.dark-mode {
+    --bg: #0F1623;
+    --surface: #1A2236;
+    --surface2: #222D42;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #F1F5F9;
+    --text2: #94A3B8;
+    --text3: #64748B;
+    --navy: #0F1623;
+    --navy2: #1A2236;
+    --navy3: #0A0F1A;
+    --gold: #D4961A;
+    --gold2: #F0AE20;
+    --gold-bg: rgba(212,150,26,0.15);
+    --gold-text: #F0AE20;
+    --success-bg: rgba(15,110,86,0.2);
+    --warn-bg: rgba(180,83,9,0.2);
+    --danger-bg: rgba(153,27,27,0.2);
+  }
+  html, body, #root { height: 100%; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NAV */
+  .nav {
+    background: var(--navy);
+    padding: 0 24px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 3px solid var(--gold);
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .nav-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  @media (max-width: 400px) {
+    .nav-center { display: none; }
+  }
+  .nav-logo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #F1F5F9;
+    letter-spacing: 0.5px;
+  }
+  .nav-logo span { color: var(--gold2); }
+  .nav-back {
+    display: flex; align-items: center; gap: 6px;
+    color: #94A3B8; font-size: 13px; cursor: pointer;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    transition: background 0.15s;
+  }
+  .nav-back:hover { background: rgba(255,255,255,0.08); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .sync-indicator {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; color: #9FE1CB;
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #1D9E75;
+    transition: background 0.3s;
+  }
+  .sync-dot.offline { background: #EF9F27; }
+
+  /* MAIN LAYOUT */
+  .main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+  @media (max-width: 600px) {
+    .main { padding: 12px 10px; }
+    .kachel-grid { grid-template-columns: 1fr; gap: 8px; }
+    .kachel { padding: 16px 14px; }
+    .kachel i { font-size: 24px; }
+    .kachel-label { font-size: 13px; word-break: break-word; }
+    .kachel-sub { font-size: 11px; word-break: break-word; }
+    .projekt-info { padding: 14px 16px; flex-direction: column; gap: 8px; }
+    .projekt-info-title { font-size: 1rem; }
+    .projekt-info-meta { font-size: 11px; line-height: 1.6; }
+    .page-title { font-size: 1.2rem; }
+    .filter-row { gap: 6px; }
+    .filter-row > div:last-child { width: 100%; justify-content: flex-end; }
+    .status-tabs { gap: 5px; }
+    .status-tab { padding: 4px 9px; font-size: 11px; }
+    .btn-row { flex-wrap: wrap; }
+    .nav { padding: 0 14px; }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-sm { padding: 14px 18px; }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  /* PROJECT GRID */
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 20px;
+  }
+  @media (max-width: 600px) {
+    .project-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+  }
+  .project-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow);
+  }
+  .project-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--gold);
+  }
+  .project-card-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+  .project-card-sub { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .project-card-new {
+    border: 2px dashed var(--border2);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px; color: var(--text3);
+    font-size: 13px; min-height: 120px;
+    background: transparent;
+  }
+  .project-card-new:hover { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.03); }
+
+  /* KACHELN */
+  .kachel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kachel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow);
+    word-break: break-word;
+  }
+  .kachel:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--gold); }
+  .kachel i { font-size: 26px; display: block; margin-bottom: 10px; color: var(--navy); }
+  .kachel-label { font-size: 13px; font-weight: 500; color: var(--text); }
+  .kachel-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* PROJEKT INFO BOX */
+  .projekt-info {
+    background: linear-gradient(135deg, var(--navy3) 0%, var(--navy2) 100%);
+    border-bottom: 3px solid var(--gold);
+    color: white;
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .projekt-info-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .projekt-info-meta { font-size: 12px; opacity: 0.75; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-entwurf { background: var(--warn-bg); color: var(--warn); }
+  .badge-aktiv { background: var(--success-bg); color: var(--success); }
+  .badge-abgeschlossen { background: var(--surface2); color: var(--text2); }
+  .badge-gering { background: #DCFCE7; color: #166534; }
+  .badge-mittel { background: var(--warn-bg); color: var(--warn); }
+  .badge-hoch { background: var(--danger-bg); color: var(--danger); }
+  .badge-kritisch { background: var(--critical-bg); color: var(--critical-text); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    transition: background 0.15s, box-shadow 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--navy); color: white; border-color: var(--navy); }
+  .btn-primary:hover { background: var(--navy2); }
+  .btn-success { background: var(--success); color: white; border-color: var(--success); }
+  .btn-success:hover { background: #085041; }
+  .btn-gold { background: var(--gold); color: white; border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold2); }
+  .btn-report { background: var(--navy); color: white; border-color: var(--navy); }
+  .btn-report:hover { background: var(--navy2); }
+  .btn-dimmed { opacity: 0.38; cursor: default; pointer-events: none; }
+  .btn-dimmed-active { opacity: 1; cursor: pointer; pointer-events: auto; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+  .btn-ai {
+    background: linear-gradient(135deg, #2D3A5C, #1C2333);
+    color: white; border: none;
+    padding: 9px 18px;
+  }
+  .btn-ai:hover { background: linear-gradient(135deg, #1C2333, #0F172A); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* INPUTS */
+  .input, .textarea, .select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .input:focus, .textarea:focus, .select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
+  .textarea { resize: vertical; min-height: 80px; }
+  .label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 5px;
+    display: block;
+  }
+  .field { margin-bottom: 12px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 600px) { .field-row-3 { grid-template-columns: 1fr; } }
+
+  /* INPUT TABS */
+  .input-tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .input-tab {
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .input-tab.active { color: var(--text); border-bottom-color: var(--navy); font-weight: 500; }
+  .input-tab:hover { color: var(--text2); }
+
+  /* AUDIO */
+  .audio-recorder {
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .recording-active { border-color: #E24B4A; background: #FEF2F2; }
+  .audio-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .audio-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 6px 10px; font-size: 12px;
+  }
+
+  /* FILE LIST */
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 6px 10px; font-size: 12px;
+  }
+  .file-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; }
+
+  /* GENERATED RESULT */
+  .result-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .result-header {
+    background: var(--surface2);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .result-field {
+    display: flex;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .result-field:last-child { border-bottom: none; }
+  .result-label { width: 160px; min-width: 160px; font-size: 12px; font-weight: 500; color: var(--text2); padding-top: 2px; }
+  .result-value { flex: 1; font-size: 14px; color: var(--text); }
+  @media (max-width: 600px) {
+    .result-field { flex-direction: column; gap: 3px; padding: 8px 12px; }
+    .result-label { width: 100%; min-width: unset; }
+    .result-input { width: 100%; }
+  }
+  .result-input {
+    flex: 1; font-size: 14px; color: var(--text);
+    border: none; outline: none; background: transparent;
+    font-family: 'Inter', sans-serif;
+    padding: 0; resize: none; min-height: 24px;
+  }
+  .result-input:focus { background: rgba(59,130,246,0.04); border-radius: 3px; }
+
+  /* MULTI ENTRY */
+  .multi-entry {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .multi-entry-header {
+    background: var(--surface2);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .entry-num {
+    font-size: 11px; font-weight: 600;
+    background: var(--navy); color: white;
+    padding: 2px 9px; border-radius: 20px;
+  }
+  .multi-entry-body { padding: 14px 16px; }
+
+  /* MANGEL LIST */
+  .mangel-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .mangel-item:last-child { border-bottom: none; }
+  .mangel-item:hover { background: var(--surface2); margin: 0 -24px; padding: 11px 24px; border-radius: var(--radius-sm); }
+  .mangel-nr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text3);
+    min-width: 28px;
+  }
+  .mangel-info { flex: 1; min-width: 0; }
+  .mangel-title { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mangel-meta { font-size: 11px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mangel-badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  @media (max-width: 600px) {
+    .mangel-item { padding: 10px 0; gap: 8px; flex-wrap: nowrap; }
+    .mangel-title { font-size: 13px; white-space: normal; }
+    .mangel-meta { white-space: normal; font-size: 10px; }
+    .mangel-nr { min-width: 22px; font-size: 10px; }
+    .mangel-badges { flex-direction: column; gap: 3px; align-items: flex-end; }
+    .badge { font-size: 10px; padding: 2px 7px; }
+    .card { padding: 0 14px; }
+  }
+
+  /* STATUS TABS */
+  .status-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .status-tab {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+  .status-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+  /* FILTER ROW */
+  .filter-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-row .input { max-width: 200px; }
+
+  /* LOADING */
+  .loading {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px; color: var(--text2); font-size: 14px;
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MODAL */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    width: 100%; max-width: 480px;
+    box-shadow: var(--shadow-md);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  @media (max-width: 600px) {
+    .modal-backdrop { padding: 10px; align-items: flex-end; }
+    .modal { border-radius: var(--radius) var(--radius) 0 0; max-height: 92vh; }
+  }
+  .modal-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 1rem; font-weight: 600; }
+  .modal-body { padding: 18px 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* TOAST */
+  .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--navy); color: white;
+    padding: 10px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; box-shadow: var(--shadow-md);
+    display: flex; align-items: center; gap: 8px;
+    animation: slideIn 0.2s ease;
+  }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* TIMESTAMP */
+  .timestamp { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* REPORT */
+  .report-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-top: 16px; }
+  .report-format-btn { flex: 1; padding: 14px; border: 1px solid var(--border2); border-radius: var(--radius); cursor: pointer; text-align: center; transition: all 0.15s; background: var(--surface); }
+  .report-format-btn:hover { border-color: var(--gold); background: var(--gold-bg); }
+  .report-format-btn.selected { border-color: var(--gold); background: var(--gold-bg); }
+  .report-format-btn i { font-size: 24px; display: block; margin-bottom: 6px; color: var(--navy); }
+  .report-format-btn span { font-size: 13px; font-weight: 500; }
+  .report-output { white-space: pre-wrap; font-size: 13px; line-height: 1.7; color: var(--text); font-family: 'Inter', sans-serif; }
+
+  /* BURGER MENU */
+  .burger-menu { position: relative; }
+  .burger-btn {
+    background: none; border: none; cursor: pointer;
+    color: #94A3B8; font-size: 20px;
+    padding: 4px 6px; border-radius: var(--radius-sm);
+    transition: background 0.15s;
+    display: flex; align-items: center;
+  }
+  .burger-btn:hover { background: rgba(255,255,255,0.08); }
+  .burger-dropdown {
+    position: absolute; right: 0; top: 110%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    min-width: 200px;
+    z-index: 200;
+    overflow: hidden;
+  }
+  .burger-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px;
+    font-size: 13px; color: var(--text);
+    cursor: pointer;
+    transition: background 0.12s;
+    border-bottom: 1px solid var(--border);
+  }
+  .burger-item:last-child { border-bottom: none; }
+  .burger-item:hover { background: var(--surface2); }
+  .burger-item i { font-size: 16px; color: var(--text3); }
+  .burger-section {
+    padding: 6px 16px 4px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty i { font-size: 40px; display: block; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .metric-val { font-size: 22px; font-weight: 700; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric { padding: 10px 12px; }
+    .metric-val { font-size: 20px; }
+  }
+
+  /* CHECKBOX */
+  .checkbox-row { display: flex; align-items: center; gap: 8px; }
+  input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--navy); }
+
+  /* PAGE HEADER */
+  .page-header { margin-bottom: 22px; }
+  .page-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--text2); }
+
+  /* SORT ICON */
+  .sort-btn { cursor: pointer; color: var(--text3); font-size: 13px; display: flex; align-items: center; gap: 4px; }
+  .sort-btn:hover { color: var(--text); }
+
+  /* ADD TEXT AREA */
+  .add-input-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--accent); cursor: pointer;
+    padding: 4px 0; margin-top: 4px;
+  }
+  .add-input-btn:hover { text-decoration: underline; }
+
+  /* SECTION DIVIDER */
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text3); margin: 18px 0 10px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const GROQ_API_KEY = localStorage.getItem('sv_groq_key') || ''; // ← hier eintragen
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const Storage = {
+  get: (key, def) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } },
+  set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
+};
+
+// ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `Du bist ein erfahrener KI-Assistent für Bausachverständige. Wandle formlose Eingaben in strukturierte Mängelprotokoll-Einträge um.
+
+Antworte NUR mit validem JSON, kein Markdown, keine Erklärungen:
+{"geschoss":"KG/EG/OG/DG/FA/AA","raum_bauteil":"Bezeichnung","gewerk":"Gewerk","schadensart":"Schadensart","mangelbeschreibung":"Vollständige fachliche Beschreibung inkl. Lage, Ausmaß, mögliche Ursache","schweregrad":"Gering/Mittel/Hoch/Kritisch","empfohlene_massnahme":"Konkrete Handlungsempfehlung mit Normbezug wo passend","geschaetzte_kosten_netto":"z.B. 200-500","dringlichkeit":"Sofort/< 4 Wochen/< 3 Monate/< 6 Monate"}
+
+Schweregrade: Gering=optischer Mangel, Mittel=Funktionseinschränkung möglich, Hoch=Folgeschäden drohen, Kritisch=Sicherheitsrisiko.
+
+Beispiele:
+Eingabe: "Riss Außenputz Nordseite EG diagonal 3mm vom Fenstersturz"
+Ausgabe: {"geschoss":"EG","raum_bauteil":"Außenwand / Fassade Nordseite","gewerk":"Putz / Fassade","schadensart":"Rissbildung","mangelbeschreibung":"Diagonaler Riss im Außenputz, Nordfassade EG, Breite ca. 3 mm, verläuft vom Fenstersturz nach unten. Ursache vermutlich Setzung des Bauwerks.","schweregrad":"Mittel","empfohlene_massnahme":"Statische Prüfung zur Ursachenklärung, Rissbeobachtung mind. 3 Monate, anschließend fachgerechte Verpressung und Überputzung.","geschaetzte_kosten_netto":"350-600","dringlichkeit":"< 3 Monate"}
+
+Eingabe: "Bad OG Silikonfuge Badewanne komplett gerissen Wassereintritt möglich"
+Ausgabe: {"geschoss":"OG","raum_bauteil":"Bad / Nassbereich","gewerk":"Fliesenleger / Sanitär","schadensart":"Gerissene Silikonfuge","mangelbeschreibung":"Silikonfuge entlang der Badewannenunterkante vollständig gerissen. Akute Wassereintrittsgefahr in darunterliegenden Bereich.","schweregrad":"Hoch","empfohlene_massnahme":"Alte Silikonfuge vollständig entfernen, Untergrund reinigen und trocknen, neue schimmelresistente Sanitärsilikonfuge fachgerecht einbringen.","geschaetzte_kosten_netto":"80-150","dringlichkeit":"< 4 Wochen"}
+
+Eingabe: "Treppengeländer wackelt Befestigung locker Brüstungshöhe wirkt zu niedrig"
+Ausgabe: {"geschoss":"EG/OG","raum_bauteil":"Treppenhaus / Geländer","gewerk":"Metallbau / Treppenbau","schadensart":"Sicherheitsmangel – Geländerbefestigung","mangelbeschreibung":"Treppengeländer instabil, Fußbefestigung gelockert. Brüstungshöhe möglicherweise unter DIN 18065 Mindestmaß von 90 cm. Akutes Sicherheitsrisiko.","schweregrad":"Kritisch","empfohlene_massnahme":"Sofortige Sicherung der Geländerbefestigung. Brüstungshöhe ausmessen, bei Unterschreitung unverzügliche Nachbesserung. Nutzungseinschränkung bis Behebung.","geschaetzte_kosten_netto":"300-1600","dringlichkeit":"Sofort"}`;
+
+// ── BERICHT PROMPTS ──────────────────────────────────────────────────────────
+const BERICHT_PROMPT_FLIESSTEXT = `Du bist ein erfahrener Bausachverständiger. Erstelle auf Basis der folgenden Mängelliste einen professionellen Gutachtenbericht als strukturierten Fließtext.
+
+WICHTIG: Verwende zwingend Markdown-Überschriften zur Strukturierung:
+- # für Hauptabschnitte (z.B. # 1. Einleitung)
+- ## für Unterabschnitte (z.B. ## Kritische Mängel)
+- ### für einzelne Mängel oder Unterpunkte
+
+Struktur:
+# 1. Einleitung
+Kurze Beschreibung von Begehungszweck, Datum und Objekt.
+
+# 2. Festgestellte Mängel
+Mängel nach Schweregrad geordnet (Kritisch zuerst, dann Hoch, Mittel, Gering).
+Für jeden Schweregrad eine ## Unterüberschrift, für jeden einzelnen Mangel eine ### Überschrift.
+
+# 3. Gesamtbewertung und Handlungsempfehlung
+Zusammenfassende Bewertung des Gebäudezustands und priorisierte Handlungsempfehlung.
+
+# 4. Kostenzusammenfassung
+Aufstellung der geschätzten Kosten und Gesamtsumme.
+
+Schreibe professionell, präzise und sachverständlich. Verwende Fachbegriffe korrekt.`;
+
+const BERICHT_PROMPT_TABELLE = `Du bist ein erfahrener Bausachverständiger. Erstelle auf Basis der folgenden Mängelliste eine strukturierte tabellarische Mängelübersicht.
+
+WICHTIG: Verwende ausschließlich # für alle Abschnittsüberschriften (keine ##). Kein einleitender Titel wie "Mängelübersicht" o.ä.
+
+Struktur exakt so:
+
+# Erfasste Mängel
+Tabelle im folgenden Format:
+| Nr. | Bauteil | Schadensart | Schweregrad | Dringlichkeit | Maßnahme | Kosten (netto) |
+|-----|---------|-------------|-------------|---------------|----------|----------------|
+
+# Gesamtanzahl Mängel nach Schweregrad
+Auflistung mit - je Schweregrad.
+
+# Gesamte geschätzte Kosten (netto)
+Summe der Kosten.
+
+# Priorisierte Handlungsempfehlung
+2-3 Sätze zur priorisierten Vorgehensweise.`;
+
+async function generateBericht(maengel, format, projektInfo) {
+  const prompt = format === 'fliesstext' ? BERICHT_PROMPT_FLIESSTEXT : BERICHT_PROMPT_TABELLE;
+  const mangelText = maengel.map((m, i) => `Mangel ${m.nr||i+1}: ${m.schadensart||'Entwurf'} | ${m.geschoss||''} ${m.raum_bauteil||''} | Schweregrad: ${m.schweregrad||'-'} | Dringlichkeit: ${m.dringlichkeit||'-'} | Beschreibung: ${m.mangelbeschreibung||'-'} | Maßnahme: ${m.empfohlene_massnahme||'-'} | Kosten: ${m.geschaetzte_kosten_netto||'-'} €`).join('\n');
+  const userMsg = `Projekt: ${projektInfo.name}\nAdresse: ${projektInfo.adresse||'-'}\nSachverständiger: ${projektInfo.sachverstaendiger||'-'}\nDatum: ${new Date().toLocaleDateString('de-DE')}\n\nMängelliste:\n${mangelText}`;
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: 'system', content: prompt }, { role: 'user', content: userMsg }],
+      temperature: 0.3, max_tokens: 2000,
+    })
+  });
+  if (!res.ok) throw new Error(`API Fehler: ${res.status}`);
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2, 10);
+const now = () => new Date().toISOString();
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' });
+const fmtDateTime = (iso) => `${fmtDate(iso)} ${fmtTime(iso)}`;
+
+const SCHWEREGRAD_ORDER = { 'Kritisch': 0, 'Hoch': 1, 'Mittel': 2, 'Gering': 3 };
+
+function BadgeSchweregrad({ grad }) {
+  const cls = { Gering: 'badge-gering', Mittel: 'badge-mittel', Hoch: 'badge-hoch', Kritisch: 'badge-kritisch' };
+  return <span className={`badge ${cls[grad] || 'badge-mittel'}`}>{grad}</span>;
+}
+function BadgeStatus({ status }) {
+  const cls = { Entwurf: 'badge-entwurf', Aktiv: 'badge-aktiv', Abgeschlossen: 'badge-abgeschlossen' };
+  return <span className={`badge ${cls[status] || 'badge-entwurf'}`}>{status}</span>;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function ToastContainer({ toasts }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.type || ''}`}>
+          <i className={`ti ${t.type === 'success' ? 'ti-check' : t.type === 'error' ? 'ti-x' : 'ti-info-circle'}`}></i>
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── INPUT BLOCK (Text + Audio + File) ─────────────────────────────────────────
+function InputBlock({ value, onChange }) {
+  const [activeTab, setActiveTab] = useState('text');
+  const [recording, setRecording] = useState(false);
+  const [audios, setAudios] = useState(value.audios || []);
+  const [files, setFiles] = useState(value.files || []);
+  const [texts, setTexts] = useState(value.texts || ['']);
+  const mediaRef = useRef(null);
+  const chunksRef = useRef([]);
+
+  const notify = useCallback((upd) => {
+    onChange({ texts, audios, files, ...upd });
+  }, [texts, audios, files, onChange]);
+
+  const updateTexts = (newTexts) => { setTexts(newTexts); notify({ texts: newTexts }); };
+  const updateAudios = (newAudios) => { setAudios(newAudios); notify({ audios: newAudios }); };
+  const updateFiles = (newFiles) => { setFiles(newFiles); notify({ files: newFiles }); };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = e => chunksRef.current.push(e.data);
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const newAudios = [...audios, { id: uid(), url, name: `Aufnahme ${audios.length + 1}`, ts: now() }];
+        updateAudios(newAudios);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      mediaRef.current = mr;
+      setRecording(true);
+    } catch { alert('Mikrofon-Zugriff verweigert'); }
+  };
+
+  const stopRecording = () => {
+    if (mediaRef.current) { mediaRef.current.stop(); setRecording(false); }
+  };
+
+  const handleFiles = (e) => {
+    const picked = Array.from(e.target.files).map(f => ({
+      id: uid(), name: f.name, type: f.type,
+      url: URL.createObjectURL(f), size: f.size
+    }));
+    const newFiles = [...files, ...picked];
+    updateFiles(newFiles);
+  };
+
+  return (
+    <div>
+      <div className="input-tabs">
+        {[['text','ti-text','Text'],['audio','ti-microphone','Sprache'],['file','ti-paperclip','Dateien']].map(([tab, icon, label]) => (
+          <div key={tab} className={`input-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+            <i className={`ti ${icon}`}></i>{label}
+            {tab === 'audio' && audios.length > 0 && <span className="badge badge-aktiv" style={{fontSize:'10px',padding:'1px 6px'}}>{audios.length}</span>}
+            {tab === 'file' && files.length > 0 && <span className="badge badge-aktiv" style={{fontSize:'10px',padding:'1px 6px'}}>{files.length}</span>}
+          </div>
+        ))}
+      </div>
+
+      {activeTab === 'text' && (
+        <div>
+          {texts.map((t, i) => (
+            <div key={i} style={{marginBottom:'8px', position:'relative'}}>
+              <textarea className="textarea" placeholder={`Mangelbeschreibung ${texts.length > 1 ? i+1 : ''}...`}
+                value={t} onChange={e => { const n=[...texts]; n[i]=e.target.value; updateTexts(n); }} />
+              {texts.length > 1 && (
+                <span style={{position:'absolute',top:'6px',right:'8px',cursor:'pointer',color:'var(--text3)',fontSize:'16px'}}
+                  onClick={() => updateTexts(texts.filter((_,j)=>j!==i))}>
+                  <i className="ti ti-x"></i>
+                </span>
+              )}
+            </div>
+          ))}
+          <div className="add-input-btn" onClick={() => updateTexts([...texts, ''])}>
+            <i className="ti ti-plus"></i> Weiteres Textfeld
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'audio' && (
+        <div>
+          <div className={`audio-recorder ${recording ? 'recording-active' : ''}`}>
+            {recording ? (
+              <div style={{display:'flex',alignItems:'center',gap:'10px',justifyContent:'center'}}>
+                <div style={{width:'10px',height:'10px',borderRadius:'50%',background:'#E24B4A',animation:'spin 1s linear infinite'}}></div>
+                <span style={{fontSize:'13px',color:'#991B1B'}}>Aufnahme läuft...</span>
+                <button className="btn btn-danger btn-sm" onClick={stopRecording}><i className="ti ti-player-stop"></i> Stop</button>
+              </div>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={startRecording}>
+                <i className="ti ti-microphone"></i> Aufnahme starten
+              </button>
+            )}
+          </div>
+          {audios.length > 0 && (
+            <div className="audio-list">
+              {audios.map((a, i) => (
+                <div key={a.id} className="audio-item">
+                  <i className="ti ti-wave-sine" style={{color:'var(--accent)'}}></i>
+                  <audio src={a.url} controls style={{flex:1,height:'28px'}}></audio>
+                  <span style={{fontSize:'11px',color:'var(--text3)'}}>{fmtTime(a.ts)}</span>
+                  <i className="ti ti-trash" style={{cursor:'pointer',color:'var(--text3)'}}
+                    onClick={() => updateAudios(audios.filter(x=>x.id!==a.id))}></i>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'file' && (
+        <div>
+          <label className="btn" style={{cursor:'pointer',display:'inline-flex'}}>
+            <i className="ti ti-upload"></i> Foto / Datei hochladen
+            <input type="file" multiple accept="image/*,.pdf" style={{display:'none'}} onChange={handleFiles} />
+          </label>
+          {files.length > 0 && (
+            <div className="file-list">
+              {files.map(f => (
+                <div key={f.id} className="file-item">
+                  {f.type.startsWith('image/') && <img src={f.url} alt="" className="file-thumb" />}
+                  {!f.type.startsWith('image/') && <i className="ti ti-file" style={{fontSize:'20px',color:'var(--accent)'}}></i>}
+                  <span style={{flex:1}}>{f.name}</span>
+                  <i className="ti ti-trash" style={{cursor:'pointer',color:'var(--text3)'}}
+                    onClick={() => updateFiles(files.filter(x=>x.id!==f.id))}></i>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── KI GENERIERUNG ────────────────────────────────────────────────────────────
+async function generateProtokoll(inputData) {
+  const parts = [];
+  (inputData.texts || []).forEach(t => { if (t.trim()) parts.push(t.trim()); });
+  (inputData.audios || []).forEach((a, i) => parts.push(`[Sprachaufnahme ${i+1}: Inhalt nicht automatisch transkribiert – bitte manuell ergänzen]`));
+  (inputData.files || []).forEach(f => parts.push(`[Anhang: ${f.name}]`));
+  const combined = parts.join('\n');
+  if (!combined.trim()) throw new Error('Keine Eingabe vorhanden');
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: combined }],
+      temperature: 0.2, max_tokens: 800,
+    })
+  });
+  if (!res.ok) throw new Error(`API Fehler: ${res.status}`);
+  const data = await res.json();
+  const raw = data.choices[0].message.content.trim();
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Kein JSON in Antwort');
+  return JSON.parse(match[0]);
+}
+
+// ── EINZELMANGEL DIALOG ───────────────────────────────────────────────────────
+function EinzelmangelView({ projekt, onBack, onSave, addToast, darkMode, onToggleDark }) {
+  const [inputData, setInputData] = useState({ texts: [''], audios: [], files: [] });
+  const [generated, setGenerated] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [ts] = useState(now());
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const result = await generateProtokoll(inputData);
+      setGenerated(result);
+      addToast('Protokolleintrag generiert', 'success');
+    } catch (e) {
+      addToast(`Fehler: ${e.message}`, 'error');
+    }
+    setLoading(false);
+  };
+
+  const updateField = (key, val) => setGenerated(g => ({ ...g, [key]: val }));
+
+  const save = (status) => {
+    const mangel = {
+      id: uid(), projektId: projekt.id,
+      status, timestamp: ts, updatedAt: now(),
+      inputData,
+      ...(generated || {}),
+      nr: null,
+    };
+    onSave(mangel, status);
+  };
+
+  const EditableField = ({ label, field, multiline }) => (
+    <div className="result-field">
+      <div className="result-label">{label}</div>
+      {multiline
+        ? <textarea className="result-input" value={generated?.[field]||''} onChange={e=>updateField(field,e.target.value)} rows={3} />
+        : <input className="result-input" value={generated?.[field]||''} onChange={e=>updateField(field,e.target.value)} />
+      }
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="nav">
+        <div className="nav-back" onClick={onBack}><i className="ti ti-arrow-left"></i> {projekt.name}</div>
+        <div className="nav-center"><span className="nav-logo">Site<span>Verdict</span></span></div>
+        <div className="nav-right">
+          <div className="sync-indicator"><div className="sync-dot"></div></div>
+          <BurgerMenu darkMode={darkMode} onToggleDark={onToggleDark} />
+        </div>
+      </div>
+      <div className="main">
+        <div className="page-header">
+          <div className="page-title">Einzelmangel erfassen</div>
+          <div className="timestamp"><i className="ti ti-clock"></i> Erfassung gestartet: {fmtDateTime(ts)}</div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Eingabe</div>
+          <InputBlock value={inputData} onChange={setInputData} />
+          <div style={{marginTop:'14px'}}>
+            <button className="btn btn-ai" onClick={generate} disabled={loading}>
+              {loading ? <><div className="spinner"></div> KI generiert...</> : <><i className="ti ti-sparkles"></i> Protokolleintrag generieren</>}
+            </button>
+          </div>
+        </div>
+
+        {generated && (
+          <div className="card">
+            <div className="card-title">Generierter Protokolleintrag – direkt bearbeitbar</div>
+            <div className="result-box">
+              <div className="result-header">
+                <span>Mängelbeschreibung</span>
+                <BadgeSchweregrad grad={generated.schweregrad} />
+              </div>
+              <div className="field-row-3" style={{padding:'10px 16px', borderBottom:'1px solid var(--border)'}}>
+                <div><div className="label">Geschoss</div><input className="input" value={generated.geschoss||''} onChange={e=>updateField('geschoss',e.target.value)} /></div>
+                <div><div className="label">Raum / Bauteil</div><input className="input" value={generated.raum_bauteil||''} onChange={e=>updateField('raum_bauteil',e.target.value)} /></div>
+                <div><div className="label">Gewerk</div><input className="input" value={generated.gewerk||''} onChange={e=>updateField('gewerk',e.target.value)} /></div>
+              </div>
+              <EditableField label="Schadensart" field="schadensart" />
+              <EditableField label="Beschreibung" field="mangelbeschreibung" multiline />
+              <div className="result-field">
+                <div className="result-label">Schweregrad</div>
+                <select className="select" style={{flex:1}} value={generated.schweregrad||'Mittel'} onChange={e=>updateField('schweregrad',e.target.value)}>
+                  {['Gering','Mittel','Hoch','Kritisch'].map(g=><option key={g}>{g}</option>)}
+                </select>
+              </div>
+              <EditableField label="Empfohlene Maßnahme" field="empfohlene_massnahme" multiline />
+              <div className="result-field">
+                <div className="result-label">Dringlichkeit</div>
+                <select className="select" style={{flex:1}} value={generated.dringlichkeit||'< 3 Monate'} onChange={e=>updateField('dringlichkeit',e.target.value)}>
+                  {['Sofort','< 4 Wochen','< 3 Monate','< 6 Monate'].map(d=><option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className="result-field">
+                <div className="result-label">Kosten (netto)</div>
+                <input className="result-input" value={generated.geschaetzte_kosten_netto||''} onChange={e=>updateField('geschaetzte_kosten_netto',e.target.value)} placeholder="z.B. 200-500 €" />
+              </div>
+            </div>
+            <div className="btn-row">
+              <button className="btn" onClick={onBack}><i className="ti ti-x"></i> Abbrechen</button>
+              <button className="btn" onClick={()=>save('Entwurf')}><i className="ti ti-device-floppy"></i> Entwurf speichern</button>
+              <button className="btn btn-gold" onClick={()=>save('Aktiv')}><i className="ti ti-device-floppy"></i> Speichern</button>
+            </div>
+          </div>
+        )}
+        {!generated && (
+          <div className="btn-row">
+            <button className="btn" onClick={onBack}><i className="ti ti-x"></i> Abbrechen</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── SAMMELMANGEL DIALOG ───────────────────────────────────────────────────────
+function SammelmangelView({ projekt, onBack, onSave, addToast, darkMode, onToggleDark }) {
+  const [sammelName, setSammelName] = useState('');
+  const [ts] = useState(now());
+  const [entries, setEntries] = useState([{ id: uid(), inputData: { texts: [''], audios: [], files: [] } }]);
+
+  const addEntry = () => setEntries(e => [...e, { id: uid(), inputData: { texts: [''], audios: [], files: [] } }]);
+  const removeEntry = (id) => setEntries(e => e.filter(x => x.id !== id));
+  const updateEntry = (id, inputData) => setEntries(e => e.map(x => x.id === id ? { ...x, inputData } : x));
+
+  const save = () => {
+    const maengel = entries.map((e, i) => ({
+      id: uid(), projektId: projekt.id,
+      status: 'Entwurf',
+      timestamp: ts, updatedAt: now(),
+      sammelName: sammelName || `Sammlung ${fmtDate(ts)}`,
+      sammelIndex: i + 1,
+      inputData: e.inputData,
+      nr: null,
+    }));
+    onSave(maengel);
+    addToast(`${maengel.length} Einträge als Entwurf gespeichert`, 'success');
+    onBack();
+  };
+
+  return (
+    <div>
+      <div className="nav">
+        <div className="nav-back" onClick={onBack}><i className="ti ti-arrow-left"></i> {projekt.name}</div>
+        <div className="nav-center"><span className="nav-logo">Site<span>Verdict</span></span></div>
+        <div className="nav-right">
+          <div className="sync-indicator"><div className="sync-dot offline"></div></div>
+          <BurgerMenu darkMode={darkMode} onToggleDark={onToggleDark} />
+        </div>
+      </div>
+      <div className="main">
+        <div className="page-header">
+          <div className="page-title">Sammelmangel erfassen</div>
+          <div className="timestamp"><i className="ti ti-clock"></i> Gestartet: {fmtDateTime(ts)}</div>
+        </div>
+
+        <div className="card card-sm">
+          <div className="field">
+            <label className="label">Name der Sammlung (optional)</label>
+            <input className="input" placeholder={`z.B. Begehung EG ${fmtDate(ts)}`} value={sammelName} onChange={e=>setSammelName(e.target.value)} />
+          </div>
+        </div>
+
+        {entries.map((entry, i) => (
+          <div key={entry.id} className="multi-entry">
+            <div className="multi-entry-header">
+              <span className="entry-num">Eintrag {i + 1}</span>
+              {entries.length > 1 && (
+                <button className="btn btn-sm" onClick={() => removeEntry(entry.id)}>
+                  <i className="ti ti-trash"></i> Entfernen
+                </button>
+              )}
+            </div>
+            <div className="multi-entry-body">
+              <InputBlock value={entry.inputData} onChange={(d) => updateEntry(entry.id, d)} />
+            </div>
+          </div>
+        ))}
+
+        <button className="btn" style={{width:'100%',justifyContent:'center',marginBottom:'16px'}} onClick={addEntry}>
+          <i className="ti ti-plus"></i> Eintrag hinzufügen
+        </button>
+
+        <div className="btn-row">
+          <button className="btn" onClick={onBack}><i className="ti ti-x"></i> Abbrechen</button>
+          <button className="btn btn-success" onClick={save}>
+            <i className="ti ti-device-floppy"></i> Als Entwurf speichern ({entries.length} Einträge)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MÄNGELLISTE ───────────────────────────────────────────────────────────────
+function MaengellisteView({ projekt, maengel, onBack, onUpdate, onDelete, addToast, darkMode, onToggleDark }) {
+  const [statusFilter, setStatusFilter] = useState('Alle');
+  const [sortDir, setSortDir] = useState('desc');
+  const [selected, setSelected] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
+  const [showBerichtModal, setShowBerichtModal] = useState(false);
+  const [berichtFormat, setBerichtFormat] = useState(null);
+  const [berichtLoading, setBerichtLoading] = useState(false);
+  const [berichtText, setBerichtText] = useState('');
+
+  const projektMaengel = maengel.filter(m => m.projektId === projekt.id);
+  const filtered = projektMaengel
+    .filter(m => statusFilter === 'Alle' || m.status === statusFilter)
+    .sort((a, b) => sortDir === 'desc'
+      ? new Date(b.timestamp) - new Date(a.timestamp)
+      : new Date(a.timestamp) - new Date(b.timestamp));
+
+  const counts = { Alle: projektMaengel.length, Entwurf: 0, Aktiv: 0, Abgeschlossen: 0 };
+  projektMaengel.forEach(m => counts[m.status] = (counts[m.status] || 0) + 1);
+
+  const toggleSelect = (id) => setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]);
+
+  const processEntwurf = async (mangel) => {
+    setProcessingId(mangel.id);
+    try {
+      const result = await generateProtokoll(mangel.inputData);
+      const nextNr = Math.max(0, ...projektMaengel.filter(m=>m.nr).map(m=>parseInt(m.nr)||0)) + 1;
+      onUpdate({ ...mangel, ...result, status: 'Aktiv', nr: String(nextNr).padStart(3,'0'), updatedAt: now() });
+      addToast('Eintrag protokolliert', 'success');
+    } catch (e) { addToast(`Fehler: ${e.message}`, 'error'); }
+    setProcessingId(null);
+  };
+
+  const processAllEntwuerfe = async () => {
+    const entwuerfe = filtered.filter(m => m.status === 'Entwurf' && selected.includes(m.id));
+    if (!entwuerfe.length) { addToast('Keine Entwürfe ausgewählt', ''); return; }
+    for (const m of entwuerfe) await processEntwurf(m);
+    setSelected([]);
+  };
+
+  const exportSelected = () => {
+    const data = filtered.filter(m => selected.includes(m.id));
+    if (!data.length) { addToast('Bitte Einträge auswählen', ''); return; }
+    const json = JSON.stringify({ projekt, maengel: data, exportiert: now() }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${projekt.name.replace(/\s/g,'_')}_maengel.json`; a.click();
+    addToast('Export abgeschlossen', 'success');
+  };
+
+  const exportPDF = () => {
+    const data = selected.length ? filtered.filter(m=>selected.includes(m.id)) : filtered;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pW = doc.internal.pageSize.getWidth();
+    const pH = doc.internal.pageSize.getHeight();
+    const ml = 18, mr = 18, maxW = pW - ml - mr;
+    let y = 18;
+
+    const checkPage = (need) => { if (y + need > pH - 18) { doc.addPage(); y = 18; } };
+
+    const drawField = (label, value, opts={}) => {
+      const labelW = 52;
+      const valueW = maxW - labelW;
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(80);
+      doc.text(label, ml, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(0);
+      const wrapped = doc.splitTextToSize(value||'-', valueW);
+      doc.text(wrapped, ml + labelW, y);
+      const rowH = Math.max(5.5, wrapped.length * 5.2);
+      y += rowH;
+    };
+
+    // ── HEADER ────────────────────────────────────────────────────────────────
+    doc.setFillColor(27,42,74);
+    doc.rect(0, 0, pW, 22, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(255,255,255);
+    doc.text('SiteVerdict – Mängelprotokoll', ml, 14);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(180,200,220);
+    doc.text(`${projekt.name}   ·   ${projekt.adresse||''}   ·   SV: ${projekt.sachverstaendiger||'-'}   ·   ${fmtDateTime(now())}`, ml, 19);
+    doc.setTextColor(0);
+    y = 30;
+
+    // ── MÄNGEL ────────────────────────────────────────────────────────────────
+    data.forEach((m, i) => {
+      const blockH = 72;
+      checkPage(blockH);
+
+      // Mangel-Header Bar
+      const sgColors = { Kritisch:[220,38,38], Hoch:[234,88,12], Mittel:[180,83,9], Gering:[22,101,52] };
+      const [r,g,b] = sgColors[m.schweregrad] || [100,100,100];
+      doc.setFillColor(r,g,b);
+      doc.rect(ml, y, 4, 28, 'F');
+
+      doc.setFillColor(245,247,250);
+      doc.rect(ml+4, y, maxW-4, 28, 'F');
+      doc.setDrawColor(220,224,230);
+      doc.rect(ml+4, y, maxW-4, 28, 'S');
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(27,42,74);
+      doc.text(`Mangel ${m.nr||'E'+(i+1)}`, ml+10, y+8);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0);
+      doc.text(m.schadensart||'Entwurf – noch nicht protokolliert', ml+10, y+15);
+
+      // Status + Schweregrad badges inline
+      doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.setTextColor(r,g,b);
+      doc.text(`[${m.schweregrad||'-'}]`, ml+10, y+23);
+      doc.setTextColor(100); doc.setFont('helvetica','normal');
+      doc.text(`${m.status||'-'}   ·   ${fmtDateTime(m.timestamp)}`, ml+50, y+23);
+      y += 32;
+
+      // Detail fields
+      doc.setTextColor(0);
+      const fields = [
+        ['Geschoss / Bauteil', `${m.geschoss||'-'}  ·  ${m.raum_bauteil||'-'}`],
+        ['Gewerk',             m.gewerk||'-'],
+        ['Schweregrad',        `${m.schweregrad||'-'}  ·  Dringlichkeit: ${m.dringlichkeit||'-'}`],
+        ['Beschreibung',       m.mangelbeschreibung||'-'],
+        ['Empf. Maßnahme',     m.empfohlene_massnahme||'-'],
+        ['Kosten (netto)',     m.geschaetzte_kosten_netto ? `ca. ${m.geschaetzte_kosten_netto} €` : '-'],
+      ];
+
+      fields.forEach(([label, value], fi) => {
+        const labelW = 52;
+        const valueW = maxW - labelW - 4;
+        const wrapped = doc.splitTextToSize(value, valueW);
+        const rowH = Math.max(6, wrapped.length * 5.2) + 2;
+        checkPage(rowH + 2);
+
+        if (fi % 2 === 0) {
+          doc.setFillColor(250,251,253);
+          doc.rect(ml, y-1, maxW, rowH, 'F');
+        }
+        doc.setDrawColor(230,233,238);
+        doc.line(ml, y + rowH - 1, ml + maxW, y + rowH - 1);
+
+        doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(90,100,120);
+        doc.text(label, ml+3, y+4);
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(0);
+        doc.text(wrapped, ml+labelW, y+4);
+        y += rowH;
+      });
+
+      y += 10;
+    });
+
+    // ── FOOTER ────────────────────────────────────────────────────────────────
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFillColor(27,42,74);
+      doc.rect(0, pH-10, pW, 10, 'F');
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(180,200,220);
+      doc.text(`SiteVerdict · ${projekt.name} · Seite ${p} von ${totalPages}`, ml, pH-4);
+    }
+
+    doc.save(`${projekt.name.replace(/\s/g,'_')}_maengel.pdf`);
+    addToast('PDF exportiert', 'success');
+  };
+
+  const openBericht = () => {
+    const basis = selected.length
+      ? filtered.filter(m => selected.includes(m.id) && m.status !== 'Entwurf')
+      : filtered.filter(m => m.status !== 'Entwurf');
+    if (!basis.length) { addToast('Keine protokollierten Mängel für Bericht vorhanden', ''); return; }
+    setBerichtText('');
+    setBerichtFormat(null);
+    setShowBerichtModal(true);
+  };
+
+  const startBericht = async () => {
+    const basis = selected.length
+      ? filtered.filter(m => selected.includes(m.id) && m.status !== 'Entwurf')
+      : filtered.filter(m => m.status !== 'Entwurf');
+    setBerichtLoading(true);
+    try {
+      const text = await generateBericht(basis, berichtFormat, projekt);
+      setBerichtText(text);
+    } catch (e) { addToast(`Fehler: ${e.message}`, 'error'); }
+    setBerichtLoading(false);
+  };
+
+  const exportBerichtTxt = () => {
+    const blob = new Blob([berichtText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projekt.name.replace(/\s/g,'_')}_Bericht.${berichtFormat==='tabelle'?'md':'txt'}`;
+    a.click();
+    addToast('Bericht als TXT exportiert', 'success');
+  };
+
+  const exportBerichtPDF = () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pW = doc.internal.pageSize.getWidth();
+    const pH = doc.internal.pageSize.getHeight();
+    const ml = 18, mr = 18, maxW = pW - ml - mr;
+    let y = 18;
+
+    const checkPage = (need) => { if (y + need > pH - 18) { doc.addPage(); y = 18; } };
+
+    // Navy header
+    doc.setFillColor(27,42,74);
+    doc.rect(0, 0, pW, 22, 'F');
+    const berichtTitel = berichtFormat === 'tabelle' ? 'SiteVerdict – Tabellarische Mängelübersicht' : 'SiteVerdict – Gutachtenbericht';
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(255,255,255);
+    doc.text(berichtTitel, ml, 14);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(180,200,220);
+    const headerMeta = `${projekt.name}   ·   ${projekt.adresse||''}   ·   SV: ${projekt.sachverstaendiger||'-'}   ·   ${fmtDateTime(now())}`;
+    doc.text(headerMeta, ml, 19);
+    doc.setTextColor(0);
+    y = 32;
+
+    const lines = berichtText.split('\n');
+    const isTableLine = l => l.trim().startsWith('|');
+    const isSeparator = l => /^\|[-\s|:]+\|$/.test(l.trim());
+
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      if (/^#{1,3} /.test(line)) {
+        const lvl = line.startsWith('# ') ? 1 : line.startsWith('## ') ? 2 : 3;
+        const text = line.replace(/^#{1,3} /, '');
+        if (lvl === 1) {
+          y += 4; // breathing room before section
+          checkPage(18);
+          // Full-width navy band
+          doc.setFillColor(27,42,74);
+          doc.rect(ml-2, y, maxW+4, 11, 'F');
+          doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(255,255,255);
+          doc.text(text, ml+2, y+7.5);
+          y += 16;
+        } else if (lvl === 2) {
+          y += 3;
+          checkPage(14);
+          // Light navy bg band
+          doc.setFillColor(235,239,248);
+          doc.rect(ml-2, y, maxW+4, 9, 'F');
+          doc.setFillColor(27,42,74);
+          doc.rect(ml-2, y, 4, 9, 'F');
+          doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(27,42,74);
+          const wrapped = doc.splitTextToSize(text, maxW-6);
+          doc.text(wrapped, ml+5, y+6.5);
+          y += wrapped.length*6 + 6;
+        } else {
+          y += 2;
+          checkPage(12);
+          // Subtle underline style
+          doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(50,65,100);
+          const wrapped = doc.splitTextToSize(text, maxW);
+          doc.text(wrapped, ml, y+5);
+          y += wrapped.length*5.5;
+          doc.setDrawColor(180,190,210);
+          doc.line(ml, y+1, ml+maxW*0.4, y+1);
+          y += 5;
+        }
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(0);
+        i++; continue;
+      }
+
+      if (isTableLine(line) && i+1 < lines.length && isSeparator(lines[i+1])) {
+        const tableLines = [];
+        let j = i;
+        while (j < lines.length && isTableLine(lines[j])) {
+          if (!isSeparator(lines[j])) {
+            const cells = lines[j].split('|').slice(1,-1).map(c => c.trim());
+            tableLines.push(cells);
+          }
+          j++;
+        }
+        if (tableLines.length > 0) {
+          const headers = tableLines[0];
+          const rows = tableLines.slice(1);
+          const colCount = headers.length;
+          const colWidths = headers.map((h, ci) => {
+            if (ci === 0) return maxW * 0.05;
+            if (ci === colCount-1) return maxW * 0.16;
+            return (maxW * 0.79) / (colCount - 2);
+          });
+          const rowH = 7; const cellPad = 2;
+          checkPage(rowH * 3);
+          // Header row
+          doc.setFillColor(27,42,74); doc.setTextColor(255,255,255);
+          doc.setFont('helvetica','bold'); doc.setFontSize(8);
+          let x = ml;
+          headers.forEach((h, ci) => {
+            doc.rect(x, y, colWidths[ci], rowH, 'F');
+            doc.text(h.substring(0,20), x+cellPad, y+rowH-cellPad);
+            x += colWidths[ci];
+          });
+          y += rowH;
+          // Data rows
+          doc.setFont('helvetica','normal'); doc.setFontSize(8);
+          rows.forEach((row, ri) => {
+            let maxL = 1;
+            row.forEach((cell, ci) => {
+              const w = doc.splitTextToSize(cell||'', colWidths[ci]-cellPad*2);
+              if (w.length > maxL) maxL = w.length;
+            });
+            const actualH = Math.max(rowH, maxL*4.5+cellPad*2);
+            checkPage(actualH+2);
+            x = ml;
+            row.forEach((cell, ci) => {
+              if (ri%2===0) { doc.setFillColor(245,247,250); } else { doc.setFillColor(255,255,255); }
+              doc.setDrawColor(210,215,225);
+              doc.rect(x, y, colWidths[ci], actualH, 'FD');
+              doc.setTextColor(0); doc.setFontSize(8); doc.setFont('helvetica','normal');
+              const wrapped = doc.splitTextToSize(cell||'', colWidths[ci]-cellPad*2);
+              doc.text(wrapped, x+cellPad, y+4.5);
+              x += colWidths[ci];
+            });
+            y += actualH;
+          });
+          y += 6;
+        }
+        i = j; continue;
+      }
+
+      if (line.trim() === '') { y += 3; i++; continue; }
+
+      if (/^[*-] /.test(line.trim())) {
+        checkPage(6);
+        const text = '- ' + line.trim().replace(/^[*-] /,'').replace(/\*\*/g,'');
+        doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(0);
+        const wrapped = doc.splitTextToSize(text, maxW-6);
+        doc.text(wrapped, ml+4, y); y += wrapped.length*5;
+        i++; continue;
+      }
+
+      checkPage(6);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(0);
+      const clean = line.replace(/\*\*/g,'');
+      const wrapped = doc.splitTextToSize(clean, maxW);
+      doc.text(wrapped, ml, y); y += wrapped.length*5;
+      i++;
+    }
+
+    // Footer on all pages
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFillColor(27,42,74);
+      doc.rect(0, pH-10, pW, 10, 'F');
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(180,200,220);
+      doc.text(`SiteVerdict   ·   ${projekt.name}   ·   Seite ${p} von ${totalPages}`, ml, pH-4);
+    }
+
+    doc.save(`${projekt.name.replace(/\s/g,'_')}_Bericht.pdf`);
+    addToast('Bericht als PDF exportiert', 'success');
+  };
+
+  return (
+    <div>
+      <div className="nav">
+        <div className="nav-back" onClick={onBack}><i className="ti ti-arrow-left"></i> {projekt.name}</div>
+        <div className="nav-center"><span className="nav-logo">Site<span>Verdict</span></span></div>
+        <div className="nav-right">
+          <div className="sync-indicator"><div className="sync-dot"></div></div>
+          <BurgerMenu darkMode={darkMode} onToggleDark={onToggleDark} />
+        </div>
+      </div>
+      <div className="main">
+        <div className="page-header">
+          <div className="page-title">Mängelliste</div>
+          <div className="page-sub">{projekt.name} · {projektMaengel.length} Mängel gesamt</div>
+        </div>
+
+        <div className="status-tabs">
+          {['Alle','Entwurf','Aktiv','Abgeschlossen'].map(s => (
+            <div key={s} className={`status-tab ${statusFilter===s?'active':''}`} onClick={()=>setStatusFilter(s)}>
+              {s} ({counts[s]||0})
+            </div>
+          ))}
+        </div>
+
+        <div className="filter-row">
+          <div className="sort-btn" onClick={()=>setSortDir(d=>d==='desc'?'asc':'desc')}>
+            <i className={`ti ti-sort-${sortDir==='desc'?'descending':'ascending'}`}></i>
+            Datum {sortDir==='desc'?'↓':'↑'}
+          </div>
+          {selected.length > 0 && (
+            <span style={{fontSize:'12px',color:'var(--text2)'}}>{selected.length} ausgewählt</span>
+          )}
+          <div style={{marginLeft:'auto',display:'flex',gap:'6px',flexWrap:'wrap',justifyContent:'flex-end'}}>
+            <button
+              className={`btn btn-sm btn-success ${selected.length > 0 ? 'btn-dimmed-active' : 'btn-dimmed'}`}
+              onClick={processAllEntwuerfe}
+              style={{opacity: selected.length > 0 ? 1 : 0.35, cursor: selected.length > 0 ? 'pointer' : 'default'}}>
+              <i className="ti ti-sparkles"></i> Protokollieren
+            </button>
+            <button className="btn btn-sm" onClick={exportSelected}>
+              <i className="ti ti-download"></i> JSON
+            </button>
+            <button className="btn btn-sm" onClick={exportPDF}>
+              <i className="ti ti-file-type-pdf"></i> PDF
+            </button>
+            <button
+              className={`btn btn-sm btn-report`}
+              style={{opacity: selected.length > 0 ? 1 : 0.35, cursor: selected.length > 0 ? 'pointer' : 'default'}}
+              onClick={openBericht}>
+              <i className="ti ti-file-report"></i> Bericht
+            </button>
+          </div>
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="empty">
+            <i className="ti ti-clipboard-off"></i>
+            <div className="empty-title">Keine Mängel gefunden</div>
+            <div>Ändere den Filter oder erfasse neue Mängel</div>
+          </div>
+        )}
+
+        <div className="card" style={{padding:'0 24px'}}>
+          {filtered.map(m => (
+            <div key={m.id}>
+              <div className="mangel-item" onClick={()=>setEditingId(editingId===m.id?null:m.id)}>
+                <input type="checkbox" checked={selected.includes(m.id)}
+                  onChange={()=>toggleSelect(m.id)} onClick={e=>e.stopPropagation()} />
+                <div className="mangel-nr">{m.nr || '–'}</div>
+                <div className="mangel-info">
+                  <div className="mangel-title">
+                    {m.schadensart || (m.sammelName ? `${m.sammelName} · Eintrag ${m.sammelIndex}` : 'Entwurf')}
+                  </div>
+                  <div className="mangel-meta">
+                    {m.geschoss && `${m.geschoss} · `}{m.raum_bauteil && `${m.raum_bauteil} · `}{fmtDateTime(m.timestamp)}
+                  </div>
+                </div>
+                <div className="mangel-badges">
+                  {m.schweregrad && <BadgeSchweregrad grad={m.schweregrad} />}
+                  <BadgeStatus status={m.status} />
+                </div>
+                <i className={`ti ti-chevron-${editingId===m.id?'up':'down'}`} style={{color:'var(--text3)',flexShrink:0}}></i>
+              </div>
+
+              {editingId === m.id && (
+                <div style={{padding:'14px 0 18px', borderTop:'1px solid var(--border)'}}>
+                  {m.status === 'Entwurf' && !m.schadensart && (
+                    <div style={{marginBottom:'12px'}}>
+                      <button className="btn btn-ai btn-sm"
+                        disabled={processingId===m.id}
+                        onClick={()=>processEntwurf(m)}>
+                        {processingId===m.id
+                          ? <><div className="spinner"></div> KI generiert...</>
+                          : <><i className="ti ti-sparkles"></i> Jetzt protokollieren</>}
+                      </button>
+                    </div>
+                  )}
+                  {m.mangelbeschreibung && (
+                    <div style={{fontSize:'13px',marginBottom:'8px'}}>
+                      <strong>Beschreibung:</strong> {m.mangelbeschreibung}
+                    </div>
+                  )}
+                  {m.empfohlene_massnahme && (
+                    <div style={{fontSize:'13px',marginBottom:'8px'}}>
+                      <strong>Maßnahme:</strong> {m.empfohlene_massnahme}
+                    </div>
+                  )}
+                  {m.geschaetzte_kosten_netto && (
+                    <div style={{fontSize:'13px',marginBottom:'8px'}}>
+                      <strong>Kosten (netto):</strong> ca. {m.geschaetzte_kosten_netto} €
+                    </div>
+                  )}
+                  <div className="btn-row">
+                    {m.status !== 'Abgeschlossen' && (
+                      <button className="btn btn-sm btn-success"
+                        onClick={()=>{onUpdate({...m,status:'Abgeschlossen',updatedAt:now()});addToast('Als abgeschlossen markiert','success');}}>
+                        <i className="ti ti-check"></i> Abschließen
+                      </button>
+                    )}
+                    {m.status === 'Abgeschlossen' && (
+                      <button className="btn btn-sm"
+                        onClick={()=>{onUpdate({...m,status:'Aktiv',updatedAt:now()});addToast('Wieder aktiviert','');}}>
+                        <i className="ti ti-refresh"></i> Reaktivieren
+                      </button>
+                    )}
+                    <button className="btn btn-sm btn-danger"
+                      onClick={()=>{if(confirm('Mangel löschen?')){onDelete(m.id);addToast('Gelöscht','');}}}>
+                      <i className="ti ti-trash"></i> Löschen
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {showBerichtModal && (
+        <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setShowBerichtModal(false);}}>
+          <div className="modal" style={{maxWidth:'640px'}}>
+            <div className="modal-header">
+              <div className="modal-title"><i className="ti ti-file-report" style={{marginRight:'8px'}}></i>Bericht erstellen</div>
+              <i className="ti ti-x" style={{cursor:'pointer',color:'var(--text3)'}} onClick={()=>setShowBerichtModal(false)}></i>
+            </div>
+            <div className="modal-body">
+              {!berichtText && (
+                <div>
+                  <p style={{fontSize:'13px',color:'var(--text2)',marginBottom:'16px'}}>
+                    Wähle das Format. Basis: {selected.length ? selected.length : filtered.filter(m=>m.status!=='Entwurf').length} protokollierte Mängel.
+                  </p>
+                  <div style={{display:'flex',gap:'12px',marginBottom:'16px'}}>
+                    <div className={`report-format-btn ${berichtFormat==='fliesstext'?'selected':''}`}
+                      onClick={()=>setBerichtFormat('fliesstext')}>
+                      <i className="ti ti-align-left"></i>
+                      <span>Gutachtenbericht</span>
+                      <div style={{fontSize:'11px',color:'var(--text3)',marginTop:'4px'}}>Professioneller Fließtext</div>
+                    </div>
+                    <div className={`report-format-btn ${berichtFormat==='tabelle'?'selected':''}`}
+                      onClick={()=>setBerichtFormat('tabelle')}>
+                      <i className="ti ti-table"></i>
+                      <span>Tabellenübersicht</span>
+                      <div style={{fontSize:'11px',color:'var(--text3)',marginTop:'4px'}}>Strukturierte Tabelle + Bewertung</div>
+                    </div>
+                  </div>
+                  {berichtLoading && (
+                    <div className="loading"><div className="spinner"></div> KI erstellt Bericht...</div>
+                  )}
+                </div>
+              )}
+              {berichtText && (
+                <div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+                    <span style={{fontSize:'12px',fontWeight:'500',color:'var(--text2)'}}>Generierter Bericht</span>
+                    <button className="btn btn-sm" onClick={()=>setBerichtText('')}><i className="ti ti-refresh"></i> Neu generieren</button>
+                  </div>
+                  <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'16px',maxHeight:'360px',overflowY:'auto'}}>
+                    <pre className="report-output">{berichtText}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={()=>setShowBerichtModal(false)}>Schließen</button>
+              {!berichtText && (
+                <button className="btn btn-report" onClick={startBericht} disabled={!berichtFormat||berichtLoading}>
+                  <i className="ti ti-sparkles"></i> Bericht generieren
+                </button>
+              )}
+              {berichtText && (
+                <div style={{display:'flex',gap:'8px'}}>
+                <button className="btn btn-sm" onClick={exportBerichtTxt}>
+                  <i className="ti ti-download"></i> TXT
+                </button>
+                <button className="btn btn-sm btn-gold" onClick={exportBerichtPDF}>
+                  <i className="ti ti-file-type-pdf"></i> PDF
+                </button>
+              </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PROJEKT DASHBOARD ─────────────────────────────────────────────────────────
+function ProjektDashboard({ projekt, maengel, onBack, onSaveMangel, onSaveSammel, onUpdateMangel, onDeleteMangel, addToast, darkMode, onToggleDark }) {
+  const [view, setView] = useState('dashboard');
+
+  const projektMaengel = maengel.filter(m => m.projektId === projekt.id);
+  const counts = { Entwurf: 0, Aktiv: 0, Abgeschlossen: 0 };
+  projektMaengel.forEach(m => counts[m.status] = (counts[m.status]||0)+1);
+
+  const handleSaveSingle = (mangel, status) => {
+    const nextNr = status === 'Aktiv'
+      ? String(Math.max(0,...projektMaengel.filter(m=>m.nr).map(m=>parseInt(m.nr)||0))+1).padStart(3,'0')
+      : null;
+    onSaveMangel({ ...mangel, nr: nextNr });
+    addToast(status === 'Aktiv' ? 'Protokolliert ✓' : 'Als Entwurf gespeichert', 'success');
+    setView('dashboard');
+  };
+
+  if (view === 'einzel') return <EinzelmangelView projekt={projekt} onBack={()=>setView('dashboard')} onSave={handleSaveSingle} addToast={addToast} darkMode={darkMode} onToggleDark={onToggleDark} />;
+  if (view === 'sammel') return <SammelmangelView projekt={projekt} onBack={()=>setView('dashboard')} onSave={onSaveSammel} addToast={addToast} darkMode={darkMode} onToggleDark={onToggleDark} />;
+  if (view === 'liste') return <MaengellisteView projekt={projekt} maengel={maengel} onBack={()=>setView('dashboard')} onUpdate={onUpdateMangel} onDelete={onDeleteMangel} addToast={addToast} darkMode={darkMode} onToggleDark={onToggleDark} />;
+
+  return (
+    <div>
+      <div className="nav">
+        <div className="nav-back" onClick={onBack}><i className="ti ti-arrow-left"></i> Projekte</div>
+        <div className="nav-center"><span className="nav-logo">Site<span>Verdict</span></span></div>
+        <div className="nav-right">
+          <div className="sync-indicator"><div className="sync-dot"></div></div>
+          <BurgerMenu darkMode={darkMode} onToggleDark={onToggleDark} />
+        </div>
+      </div>
+      <div className="main">
+        <div className="projekt-info">
+          <div>
+            <div className="projekt-info-title">{projekt.name}</div>
+            <div className="projekt-info-meta">
+              {projekt.adresse && `${projekt.adresse} · `}
+              {projekt.auftraggeber && `AG: ${projekt.auftraggeber} · `}
+              {projekt.sachverstaendiger && `SV: ${projekt.sachverstaendiger} · `}
+              Seit {fmtDate(projekt.erstellt)}
+            </div>
+          </div>
+          <BadgeStatus status="Aktiv" />
+        </div>
+
+        <div className="metrics">
+          <div className="metric"><div className="metric-val">{projektMaengel.length}</div><div className="metric-label">Gesamt</div></div>
+          <div className="metric"><div className="metric-val" style={{color:'var(--warn)'}}>{counts.Entwurf}</div><div className="metric-label">Entwürfe</div></div>
+          <div className="metric"><div className="metric-val" style={{color:'var(--success)'}}>{counts.Aktiv}</div><div className="metric-label">Aktiv</div></div>
+          <div className="metric"><div className="metric-val" style={{color:'var(--text3)'}}>{counts.Abgeschlossen}</div><div className="metric-label">Abgeschlossen</div></div>
+        </div>
+
+        <div className="kachel-grid">
+          <div className="kachel" onClick={()=>setView('einzel')}>
+            <i className="ti ti-clipboard-plus"></i>
+            <div className="kachel-label">Mangel erfassen</div>
+            <div className="kachel-sub">Erfassen & protokollieren</div>
+          </div>
+          <div className="kachel" onClick={()=>setView('sammel')}>
+            <i className="ti ti-list-check"></i>
+            <div className="kachel-label">Multi-Mängel erfassen</div>
+            <div className="kachel-sub">Schnell mehrere erfassen</div>
+          </div>
+          <div className="kachel" onClick={()=>setView('liste')}>
+            <i className="ti ti-clipboard-list"></i>
+            <div className="kachel-label">Mängelliste</div>
+            <div className="kachel-sub">{projektMaengel.length} Einträge</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── NEUES PROJEKT MODAL ───────────────────────────────────────────────────────
+function NeueProjektModal({ onClose, onCreate, editData }) {
+  const [form, setForm] = useState(editData || { name:'', adresse:'', auftraggeber:'', sachverstaendiger:'' });
+  const upd = (k,v) => setForm(f=>({...f,[k]:v}));
+  const submit = () => {
+    if (!form.name.trim()) return;
+    if (editData) {
+      onCreate({ ...form });
+    } else {
+      onCreate({ id: uid(), erstellt: now(), ...form });
+    }
+    onClose();
+  };
+  return (
+    <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{editData ? 'Projekt bearbeiten' : 'Neues Projekt anlegen'}</div>
+          <i className="ti ti-x" style={{cursor:'pointer',color:'var(--text3)'}} onClick={onClose}></i>
+        </div>
+        <div className="modal-body">
+          <div className="field"><label className="label">Projektname *</label><input className="input" placeholder="z.B. Musterstraße 12, Oldenburg" value={form.name} onChange={e=>upd('name',e.target.value)} /></div>
+          <div className="field"><label className="label">Adresse</label><input className="input" placeholder="Straße, PLZ Ort" value={form.adresse} onChange={e=>upd('adresse',e.target.value)} /></div>
+          <div className="field-row">
+            <div className="field"><label className="label">Auftraggeber</label><input className="input" placeholder="Name" value={form.auftraggeber} onChange={e=>upd('auftraggeber',e.target.value)} /></div>
+            <div className="field"><label className="label">Sachverständiger</label><input className="input" placeholder="Name" value={form.sachverstaendiger} onChange={e=>upd('sachverstaendiger',e.target.value)} /></div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={submit} disabled={!form.name.trim()}>
+            <i className={`ti ${editData ? 'ti-check' : 'ti-plus'}`}></i> {editData ? 'Speichern' : 'Projekt erstellen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── BURGER MENU COMPONENT ────────────────────────────────────────────────────
+function BurgerMenu({ darkMode, onToggleDark }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="burger-menu" ref={ref}>
+      <button className="burger-btn" onClick={() => setOpen(o => !o)} aria-label="Menü">
+        <i className="ti ti-menu-2"></i>
+      </button>
+      {open && (
+        <div className="burger-dropdown">
+          <div className="burger-section">Darstellung</div>
+          <div className="burger-item" onClick={() => { onToggleDark(); setOpen(false); }}>
+            <i className={`ti ${darkMode ? 'ti-sun' : 'ti-moon'}`}></i>
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
+          </div>
+          <div className="burger-section">Info</div>
+          <div className="burger-item" onClick={() => {
+            const key = prompt('Neuen Groq API Key eingeben (gsk_...):');
+            if (key && key.trim().startsWith('gsk_')) {
+              localStorage.setItem('sv_groq_key', key.trim());
+              window.location.reload();
+            }
+            setOpen(false);
+          }}>
+            <i className="ti ti-key"></i>
+            API Key ändern
+          </div>
+          <div className="burger-item" onClick={() => { alert('SiteVerdict v1.0\nKI-gestützte Mängeldokumentation\nFelix Poit (WIB S4)\nKI im Bauwesen\nJade Hochschule Oldenburg'); setOpen(false); }}>
+            <i className="ti ti-info-circle"></i>
+            Über SiteVerdict
+          </div>
+          <div className="burger-item" onClick={() => { if(confirm('Alle lokalen Daten löschen?')) { localStorage.clear(); window.location.reload(); } setOpen(false); }}>
+            <i className="ti ti-trash" style={{color:'var(--danger)'}}></i>
+            <span style={{color:'var(--danger)'}}>Daten zurücksetzen</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── APP ROOT ──────────────────────────────────────────────────────────────────
+function App() {
+  const [projekte, setProjekte] = useState(() => Storage.get('sv_projekte', []));
+  const [maengel, setMaengel] = useState(() => Storage.get('sv_maengel', []));
+  const [aktivProjekt, setAktivProjekt] = useState(null);
+  const [showNeuModal, setShowNeuModal] = useState(false);
+  const [editingProjekt, setEditingProjekt] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [darkMode, setDarkMode] = useState(() => Storage.get('sv_darkmode', false));
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('sv_groq_key') || '');
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+    Storage.set('sv_darkmode', darkMode);
+  }, [darkMode]);
+
+  useEffect(() => { Storage.set('sv_projekte', projekte); }, [projekte]);
+  useEffect(() => { Storage.set('sv_maengel', maengel); }, [maengel]);
+
+  const addToast = (msg, type='') => {
+    const id = uid();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
+  };
+
+  const createProjekt = (p) => {
+    if (p.id && projekte.find(x => x.id === p.id)) {
+      setProjekte(ps => ps.map(x => x.id === p.id ? p : x));
+    } else {
+      setProjekte(ps => [...ps, p]);
+    }
+  };
+
+  const saveMangel = (m) => setMaengel(ms => [...ms, m]);
+
+  const saveSammel = (maengelArr) => setMaengel(ms => [...ms, ...maengelArr]);
+
+  const updateMangel = (updated) => setMaengel(ms => ms.map(m => m.id === updated.id ? updated : m));
+
+  const deleteMangel = (id) => setMaengel(ms => ms.filter(m => m.id !== id));
+
+  const deleteProjekt = (id) => {
+    if (confirm('Projekt und alle zugehörigen Mängel löschen?')) {
+      setProjekte(ps => ps.filter(p => p.id !== id));
+      setMaengel(ms => ms.filter(m => m.projektId !== id));
+      addToast('Projekt gelöscht', '');
+    }
+  };
+
+  if (!apiKey) {
+    return (
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'20px'}}>
+        <div className="card" style={{maxWidth:'400px',width:'100%'}}>
+          <div style={{textAlign:'center',marginBottom:'24px'}}>
+            <div style={{fontSize:'2.4rem',marginBottom:'8px'}}>🏗️</div>
+            <div style={{fontSize:'1.3rem',fontWeight:'700',color:'var(--navy)'}}>SiteVerdict</div>
+            <div style={{fontSize:'13px',color:'var(--text2)',marginTop:'4px'}}>KI-gestützte Mängeldokumentation für Bausachverständige</div>
+          </div>
+          <div className="field">
+            <label className="label">Groq API Key</label>
+            <input id="key-input" className="input" type="password" placeholder="gsk_..."
+              onKeyDown={e => {
+                if (e.key === 'Enter' && e.target.value.trim().startsWith('gsk_')) {
+                  localStorage.setItem('sv_groq_key', e.target.value.trim());
+                  setApiKey(e.target.value.trim());
+                }
+              }}
+            />
+            <div style={{fontSize:'11px',color:'var(--text3)',marginTop:'6px'}}>
+              Kostenlos erstellen auf <a href="https://console.groq.com" target="_blank" style={{color:'var(--gold)'}}>console.groq.com</a> · wird lokal gespeichert · nie übertragen
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',marginTop:'8px'}}
+            onClick={() => {
+              const val = document.getElementById('key-input').value.trim();
+              if (val.startsWith('gsk_')) {
+                localStorage.setItem('sv_groq_key', val);
+                setApiKey(val);
+              }
+            }}>
+            <i className="ti ti-login"></i> Starten
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (aktivProjekt) {
+    const proj = projekte.find(p => p.id === aktivProjekt);
+    if (!proj) { setAktivProjekt(null); return null; }
+    return (
+      <>
+        <ProjektDashboard
+          projekt={proj} maengel={maengel}
+          onBack={() => setAktivProjekt(null)}
+          onSaveMangel={saveMangel}
+          onSaveSammel={saveSammel}
+          onUpdateMangel={updateMangel}
+          onDeleteMangel={deleteMangel}
+          addToast={addToast}
+          darkMode={darkMode}
+          onToggleDark={() => setDarkMode(d=>!d)}
+        />
+        <ToastContainer toasts={toasts} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="nav">
+        <div style={{width:'80px'}}></div>
+        <div className="nav-center"><span className="nav-logo">Site<span>Verdict</span></span></div>
+        <div className="nav-right">
+          <div className="sync-indicator"><div className="sync-dot"></div></div>
+          <BurgerMenu darkMode={darkMode} onToggleDark={()=>setDarkMode(d=>!d)} />
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="page-header">
+          <div className="page-title">Projekte</div>
+          <div className="page-sub">KI-gestützte Mängeldokumentation für Bausachverständige</div>
+        </div>
+
+        <div className="card card-sm" style={{marginBottom:'8px'}}>
+          <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}} onClick={()=>setShowNeuModal(true)}>
+            <i className="ti ti-plus"></i> Neues Projekt anlegen
+          </button>
+        </div>
+
+        {projekte.length === 0 && (
+          <div className="empty">
+            <i className="ti ti-building"></i>
+            <div className="empty-title">Noch keine Projekte</div>
+            <div>Lege dein erstes Projekt an um zu starten</div>
+          </div>
+        )}
+
+        <div className="project-grid">
+          {projekte.map(p => {
+            const pm = maengel.filter(m => m.projektId === p.id);
+            const entwuerfe = pm.filter(m=>m.status==='Entwurf').length;
+            const aktiv = pm.filter(m=>m.status==='Aktiv').length;
+            return (
+              <div key={p.id} className="project-card" onClick={()=>setAktivProjekt(p.id)}>
+                <div className="project-card-title">{p.name}</div>
+                <div className="project-card-sub">{p.adresse || 'Keine Adresse'}</div>
+                <div style={{display:'flex',gap:'5px',flexWrap:'wrap',marginBottom:'10px'}}>
+                  {entwuerfe > 0 && <span className="badge badge-entwurf">{entwuerfe} Entwurf{entwuerfe!==1?'e':''}</span>}
+                  {aktiv > 0 && <span className="badge badge-aktiv">{aktiv} Aktiv</span>}
+                  {pm.length === 0 && <span className="badge badge-abgeschlossen">Neu</span>}
+                </div>
+                <div style={{fontSize:'11px',color:'var(--text3)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span>{fmtDate(p.erstellt)}</span>
+                  <div style={{display:'flex',gap:'10px'}}>
+                    <i className="ti ti-edit" style={{cursor:'pointer'}} title="Bearbeiten"
+                      onClick={e=>{e.stopPropagation();setEditingProjekt(p);setShowNeuModal(true)}}></i>
+                    <i className="ti ti-trash" style={{cursor:'pointer'}} title="Löschen"
+                      onClick={e=>{e.stopPropagation();deleteProjekt(p.id)}}></i>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {showNeuModal && <NeueProjektModal onClose={()=>{setShowNeuModal(false);setEditingProjekt(null);}} onCreate={createProjekt} editData={editingProjekt} />}
+      <ToastContainer toasts={toasts} />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
