@@ -777,9 +777,12 @@ function InputBlock({ value, onChange }) {
       mr.ondataavailable = e => chunksRef.current.push(e.data);
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        const newAudios = [...audios, { id: uid(), url, name: `Aufnahme ${audios.length + 1}`, ts: now() }];
-        updateAudios(newAudios);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const newAudios = [...audios, { id: uid(), url: reader.result, name: `Aufnahme ${audios.length + 1}`, ts: now() }];
+          updateAudios(newAudios);
+        };
+        reader.readAsDataURL(blob);
         stream.getTracks().forEach(t => t.stop());
       };
       mr.start();
@@ -793,12 +796,17 @@ function InputBlock({ value, onChange }) {
   };
 
   const handleFiles = (e) => {
-    const picked = Array.from(e.target.files).map(f => ({
-      id: uid(), name: f.name, type: f.type,
-      url: URL.createObjectURL(f), size: f.size
-    }));
-    const newFiles = [...files, ...picked];
-    updateFiles(newFiles);
+    Array.from(e.target.files).forEach(f => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFiles(prev => {
+          const newFiles = [...prev, { id: uid(), name: f.name, type: f.type, url: reader.result, size: f.size }];
+          onChange({ texts, audios, files: newFiles });
+          return newFiles;
+        });
+      };
+      reader.readAsDataURL(f);
+    });
   };
 
   return (
@@ -1119,6 +1127,7 @@ function MaengellisteView({ projekt, maengel, onBack, onUpdate, onDelete, addToa
   const [selected, setSelected] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [editingMangel, setEditingMangel] = useState(null);
   const [showBerichtModal, setShowBerichtModal] = useState(false);
   const [berichtFormat, setBerichtFormat] = useState(null);
   const [berichtLoading, setBerichtLoading] = useState(false);
@@ -1582,6 +1591,10 @@ function MaengellisteView({ projekt, maengel, onBack, onUpdate, onDelete, addToa
                     </div>
                   )}
                   <div className="btn-row">
+                    <button className="btn btn-sm btn-primary"
+                      onClick={()=>setEditingMangel(m)}>
+                      <i className="ti ti-edit"></i> Bearbeiten
+                    </button>
                     {m.status !== 'Abgeschlossen' && (
                       <button className="btn btn-sm btn-success"
                         onClick={()=>{onUpdate({...m,status:'Abgeschlossen',updatedAt:now()});addToast('Als abgeschlossen markiert','success');}}>
@@ -1605,6 +1618,80 @@ function MaengellisteView({ projekt, maengel, onBack, onUpdate, onDelete, addToa
           ))}
         </div>
       </div>
+
+      {editingMangel && (
+        <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setEditingMangel(null);}}>
+          <div className="modal" style={{maxWidth:'680px',width:'100%'}}>
+            <div className="modal-header">
+              <div className="modal-title"><i className="ti ti-edit" style={{marginRight:'8px'}}></i>Mangel bearbeiten</div>
+              <i className="ti ti-x" style={{cursor:'pointer',color:'var(--text3)'}} onClick={()=>setEditingMangel(null)}></i>
+            </div>
+            <div className="modal-body" style={{maxHeight:'70vh',overflowY:'auto'}}>
+              <div style={{marginBottom:'16px'}}>
+                <div className="card-title">Eingaben</div>
+                <InputBlock
+                  value={editingMangel.inputData || {texts:[''],audios:[],files:[]}}
+                  onChange={d => setEditingMangel(m => ({...m, inputData: d}))}
+                />
+              </div>
+              {editingMangel.schadensart && (
+                <div>
+                  <div className="card-title">Protokolleintrag</div>
+                  <div className="result-box">
+                    <div className="result-header"><span>Felder – direkt bearbeitbar</span><BadgeSchweregrad grad={editingMangel.schweregrad} /></div>
+                    <div className="field-row-3" style={{padding:'10px 16px',borderBottom:'1px solid var(--border)'}}>
+                      <div><div className="label">Geschoss</div><input className="input" value={editingMangel.geschoss||''} onChange={e=>setEditingMangel(m=>({...m,geschoss:e.target.value}))}/></div>
+                      <div><div className="label">Raum / Bauteil</div><input className="input" value={editingMangel.raum_bauteil||''} onChange={e=>setEditingMangel(m=>({...m,raum_bauteil:e.target.value}))}/></div>
+                      <div><div className="label">Gewerk</div><input className="input" value={editingMangel.gewerk||''} onChange={e=>setEditingMangel(m=>({...m,gewerk:e.target.value}))}/></div>
+                    </div>
+                    <div className="result-field"><div className="result-label">Schadensart</div><input className="result-input" value={editingMangel.schadensart||''} onChange={e=>setEditingMangel(m=>({...m,schadensart:e.target.value}))}/></div>
+                    <div className="result-field"><div className="result-label">Beschreibung</div><textarea className="result-input" rows={3} value={editingMangel.mangelbeschreibung||''} onChange={e=>setEditingMangel(m=>({...m,mangelbeschreibung:e.target.value}))}/></div>
+                    <div className="result-field">
+                      <div className="result-label">Schweregrad</div>
+                      <select className="select" style={{flex:1}} value={editingMangel.schweregrad||'Mittel'} onChange={e=>setEditingMangel(m=>({...m,schweregrad:e.target.value}))}>
+                        {['Gering','Mittel','Hoch','Kritisch'].map(g=><option key={g}>{g}</option>)}
+                      </select>
+                    </div>
+                    <div className="result-field"><div className="result-label">Empf. Maßnahme</div><textarea className="result-input" rows={3} value={editingMangel.empfohlene_massnahme||''} onChange={e=>setEditingMangel(m=>({...m,empfohlene_massnahme:e.target.value}))}/></div>
+                    <div className="result-field">
+                      <div className="result-label">Dringlichkeit</div>
+                      <select className="select" style={{flex:1}} value={editingMangel.dringlichkeit||'< 3 Monate'} onChange={e=>setEditingMangel(m=>({...m,dringlichkeit:e.target.value}))}>
+                        {['Sofort','< 4 Wochen','< 3 Monate','< 6 Monate'].map(d=><option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div className="result-field"><div className="result-label">Kosten (netto)</div><input className="result-input" value={editingMangel.geschaetzte_kosten_netto||''} onChange={e=>setEditingMangel(m=>({...m,geschaetzte_kosten_netto:e.target.value}))}/></div>
+                  </div>
+                </div>
+              )}
+              {!editingMangel.schadensart && (
+                <div style={{marginTop:'12px'}}>
+                  <button className="btn btn-ai" onClick={async()=>{
+                    try {
+                      const result = await generateProtokoll(editingMangel.inputData);
+                      setEditingMangel(m=>({...m,...result}));
+                      addToast('KI-Protokoll generiert','success');
+                    } catch(e){ addToast(`Fehler: ${e.message}`,'error'); }
+                  }}><i className="ti ti-sparkles"></i> KI-Protokoll generieren</button>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={()=>setEditingMangel(null)}>Abbrechen</button>
+              <button className="btn" onClick={()=>{
+                onUpdate({...editingMangel,status:'Entwurf',updatedAt:now()});
+                setEditingMangel(null);
+                addToast('Als Entwurf gespeichert','success');
+              }}><i className="ti ti-device-floppy"></i> Entwurf speichern</button>
+              <button className="btn btn-gold" onClick={()=>{
+                const nextNr = editingMangel.nr || String(Math.max(0,...projektMaengel.filter(x=>x.nr).map(x=>parseInt(x.nr)||0))+1).padStart(3,'0');
+                onUpdate({...editingMangel,status:'Aktiv',nr:nextNr,updatedAt:now()});
+                setEditingMangel(null);
+                addToast('Gespeichert','success');
+              }}><i className="ti ti-device-floppy"></i> Speichern</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showBerichtModal && (
         <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)setShowBerichtModal(false);}}>
